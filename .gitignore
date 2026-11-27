@@ -1,0 +1,10 @@
+LoaderTest.xcodeproj/
+Shell/Info.plist
+build/
+ipa/
+*.ipa
+*.dylib
+.DS_Store
+*.der
+*.p12
+*.mobileprovision

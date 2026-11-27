@@ -1,0 +1,66 @@
+name: Build
+
+# Push a tag like v1 to publish a release with LoaderTest.ipa (install it once with
+# SideStep) and payload.dylib (what the app downloads, signs and loads).
+# Push v2 later to check the app picks up the new payload without reinstalling.
+on:
+  push:
+    tags: ["v*"]
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick a version
+        id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then V="${GITHUB_REF_NAME}"; else V="dev-${GITHUB_SHA::7}"; fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Build the payload dylib (unsigned)
+        run: |
+          xcrun -sdk iphoneos clang -arch arm64 -miphoneos-version-min=15.0 \
+            -fobjc-arc -dynamiclib -framework UIKit -framework Foundation \
+            -install_name @rpath/payload.dylib \
+            -DPAYLOAD_VERSION="\"${{ steps.v.outputs.version }}\"" \
+            Payload/payload.m -o payload.dylib
+          file payload.dylib
+
+      - name: Build the shell app (unsigned)
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild -project LoaderTest.xcodeproj -scheme LoaderTest -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            MARKETING_VERSION="${{ steps.v.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.v.outputs.number }}" \
+            PAYLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/payload.dylib" \
+            CODE_SIGNING_ALLOWED=NO build | tail -30
+          mkdir -p ipa/Payload
+          cp -R build/Build/Products/Release-iphoneos/LoaderTest.app ipa/Payload/
+          (cd ipa && zip -qry ../LoaderTest.ipa Payload)
+          ls -la LoaderTest.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loader-test-${{ steps.v.outputs.version }}
+          path: |
+            LoaderTest.ipa
+            payload.dylib
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" LoaderTest.ipa payload.dylib \
+            --title "Loader Test $GITHUB_REF_NAME" \
+            --notes "Install LoaderTest.ipa once with SideStep. The app downloads payload.dylib from the latest release, signs it on the phone and loads it."

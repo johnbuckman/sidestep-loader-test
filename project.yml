@@ -1,0 +1,57 @@
+# XcodeGen spec: `xcodegen generate` writes LoaderTest.xcodeproj (not committed).
+name: LoaderTest
+options:
+  bundleIdPrefix: com.sidestep
+  deploymentTarget:
+    iOS: "15.0"
+packages:
+  OpenSSL:
+    url: https://github.com/krzyzanowskim/OpenSSL
+    exactVersion: 3.6.2000
+targets:
+  LoaderTest:
+    type: application
+    platform: iOS
+    scheme: {}
+    sources:
+      - path: Shell
+      - path: Vendor/zsign
+        excludes:
+          - LICENSE
+    dependencies:
+      - package: OpenSSL
+    info:
+      path: Shell/Info.plist
+      properties:
+        CFBundleDisplayName: Loader Test
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        PayloadURL: $(PAYLOAD_URL)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sidestep.loadertest
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        PAYLOAD_URL: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SWIFT_OBJC_BRIDGING_HEADER: Shell/LoaderTest-Bridging-Header.h
+        HEADER_SEARCH_PATHS:
+          - $(SRCROOT)/Vendor/zsign
+          - $(SRCROOT)/Vendor/zsign/common
+          - $(SRCROOT)/Shell/Signer
+        CLANG_CXX_LANGUAGE_STANDARD: c++17
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
